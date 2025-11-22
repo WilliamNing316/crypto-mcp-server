@@ -944,7 +944,14 @@ async function main() {
                 res.end();
                 return;
             }
-            if (req.method === "POST" && (req.url === "/mcp" || req.url === "/")) {
+            // 解析 URL，移除查询参数
+            const urlPath = req.url?.split("?")[0] || "/";
+            // 调试日志
+            console.error(`[HTTP] ${req.method} ${req.url} -> ${urlPath}`);
+            // 匹配 /mcp 结尾的路径（支持 Smithery 网关路径如 /@user/repo/mcp）
+            // 或者根路径 /
+            const isMcpPath = urlPath === "/" || urlPath.endsWith("/mcp") || urlPath === "/mcp";
+            if (req.method === "POST" && isMcpPath) {
                 let body = "";
                 req.on("data", (chunk) => {
                     body += chunk.toString();
