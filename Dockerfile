@@ -33,10 +33,6 @@ ENV MCP_TRANSPORT=http
 # Expose port (Smithery uses 8081)
 EXPOSE 8081
 
-# Health check - 检查 HTTP 健康检查端点
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:8081/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"
-
 # Run the MCP server
 CMD ["node", "dist/server.js"]
 

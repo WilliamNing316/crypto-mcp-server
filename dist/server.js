@@ -636,61 +636,358 @@ async function main() {
     const transportType = process.env.MCP_TRANSPORT || "stdio";
     if (transportType === "http") {
         // HTTP 传输模式（用于 Smithery 等平台）
-        // 创建一个简单的 HTTP 服务器包装 MCP 服务器
+        // MCP over HTTP 使用 JSON-RPC 2.0 协议
         const port = parseInt(process.env.PORT || "8081", 10);
         const { createServer } = await import("http");
-        // 创建 HTTP 服务器，将请求转发到 MCP 服务器
+        // 创建内部请求处理函数
+        // 由于 MCP Server 的 handler 是内部实现的，我们需要手动处理请求
+        const handleRequest = async (method, params) => {
+            if (method === "tools/list") {
+                // 返回工具列表
+                return {
+                    tools: [
+                        {
+                            name: "get_price",
+                            description: "获取 Binance 实时价格",
+                            inputSchema: {
+                                type: "object",
+                                properties: {
+                                    symbol: {
+                                        type: "string",
+                                        description: "交易对符号，如 BTC、ETH、SOL（不区分大小写）",
+                                    },
+                                    quote: {
+                                        type: "string",
+                                        description: "报价货币，如 USDT、BUSD（默认 USDT）",
+                                        default: "USDT",
+                                    },
+                                },
+                                required: ["symbol"],
+                            },
+                        },
+                        {
+                            name: "get_24h_stats",
+                            description: "获取 Binance 24小时统计数据（今日涨跌、成交量、最高/最低）",
+                            inputSchema: {
+                                type: "object",
+                                properties: {
+                                    symbol: {
+                                        type: "string",
+                                        description: "交易对符号，如 BTC、ETH、SOL（不区分大小写）",
+                                    },
+                                    quote: {
+                                        type: "string",
+                                        description: "报价货币，如 USDT、BUSD（默认 USDT）",
+                                        default: "USDT",
+                                    },
+                                },
+                                required: ["symbol"],
+                            },
+                        },
+                        {
+                            name: "get_ohlcv",
+                            description: "获取 Binance K线数据（技术分析所需）",
+                            inputSchema: {
+                                type: "object",
+                                properties: {
+                                    symbol: {
+                                        type: "string",
+                                        description: "交易对符号，如 BTC、ETH、SOL（不区分大小写）",
+                                    },
+                                    quote: {
+                                        type: "string",
+                                        description: "报价货币，如 USDT、BUSD（默认 USDT）",
+                                        default: "USDT",
+                                    },
+                                    interval: {
+                                        type: "string",
+                                        enum: ["1m", "3m", "5m", "15m", "30m", "1h", "2h", "4h", "6h", "8h", "12h", "1d", "3d", "1w", "1M"],
+                                        description: "K线时间间隔，如 1m, 5m, 1h, 1d（默认 1h）",
+                                        default: "1h",
+                                    },
+                                    limit: {
+                                        type: "number",
+                                        description: "返回的K线数量（1-1000，默认500）",
+                                        default: 500,
+                                    },
+                                },
+                                required: ["symbol"],
+                            },
+                        },
+                        {
+                            name: "get_symbol_overview",
+                            description: "获取交易对综合概览（当前价格、涨跌幅、最高/最低、趋势判断、交易量分析）",
+                            inputSchema: {
+                                type: "object",
+                                properties: {
+                                    symbol: {
+                                        type: "string",
+                                        description: "交易对符号，如 BTC、ETH、SOL（不区分大小写）",
+                                    },
+                                    quote: {
+                                        type: "string",
+                                        description: "报价货币，如 USDT、BUSD（默认 USDT）",
+                                        default: "USDT",
+                                    },
+                                },
+                                required: ["symbol"],
+                            },
+                        },
+                        {
+                            name: "get_order_book",
+                            description: "获取交易深度（订单簿）- 查看流动性、深度、买卖盘强度",
+                            inputSchema: {
+                                type: "object",
+                                properties: {
+                                    symbol: {
+                                        type: "string",
+                                        description: "交易对符号，如 BTC、ETH、SOL（不区分大小写）",
+                                    },
+                                    quote: {
+                                        type: "string",
+                                        description: "报价货币，如 USDT、BUSD（默认 USDT）",
+                                        default: "USDT",
+                                    },
+                                    limit: {
+                                        type: "number",
+                                        description: "返回的订单深度数量（5-5000，默认100）",
+                                        default: 100,
+                                    },
+                                },
+                                required: ["symbol"],
+                            },
+                        },
+                    ],
+                };
+            }
+            else if (method === "tools/call") {
+                // 调用工具 - 直接调用已注册的 handler 逻辑
+                const { name, arguments: args } = params;
+                // 复用 stdio handler 的逻辑
+                if (name === "get_price") {
+                    const params = GetPriceSchema.parse(args || {});
+                    const result = await getPrice(params);
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify({
+                                    symbol: result.symbol,
+                                    price: result.price,
+                                    quote: params.quote,
+                                    timestamp: result.timestamp,
+                                    timestampISO: new Date(result.timestamp).toISOString(),
+                                }, null, 2),
+                            },
+                        ],
+                    };
+                }
+                else if (name === "get_24h_stats") {
+                    const params = Get24hStatsSchema.parse(args || {});
+                    const result = await get24hStats(params);
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify({
+                                    symbol: result.symbol,
+                                    priceChange: result.priceChange,
+                                    priceChangePercent: result.priceChangePercent,
+                                    weightedAvgPrice: result.weightedAvgPrice,
+                                    prevClosePrice: result.prevClosePrice,
+                                    lastPrice: result.lastPrice,
+                                    bidPrice: result.bidPrice,
+                                    askPrice: result.askPrice,
+                                    openPrice: result.openPrice,
+                                    highPrice: result.highPrice,
+                                    lowPrice: result.lowPrice,
+                                    volume: result.volume,
+                                    quoteVolume: result.quoteVolume,
+                                    openTime: result.openTime,
+                                    closeTime: result.closeTime,
+                                    openTimeISO: new Date(result.openTime).toISOString(),
+                                    closeTimeISO: new Date(result.closeTime).toISOString(),
+                                    timestamp: Date.now(),
+                                }, null, 2),
+                            },
+                        ],
+                    };
+                }
+                else if (name === "get_ohlcv") {
+                    const params = GetOhlcvSchema.parse(args || {});
+                    const klines = await getOhlcv(params);
+                    const formattedKlines = klines.map((kline) => ({
+                        openTime: kline[0],
+                        openTimeISO: new Date(kline[0]).toISOString(),
+                        open: kline[1],
+                        high: kline[2],
+                        low: kline[3],
+                        close: kline[4],
+                        volume: kline[5],
+                        closeTime: kline[6],
+                        closeTimeISO: new Date(kline[6]).toISOString(),
+                        quoteVolume: kline[7],
+                        trades: kline[8],
+                        takerBuyBaseVolume: kline[9],
+                        takerBuyQuoteVolume: kline[10],
+                    }));
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify({
+                                    symbol: `${params.symbol.toUpperCase()}${params.quote.toUpperCase()}`,
+                                    interval: params.interval,
+                                    limit: params.limit,
+                                    count: formattedKlines.length,
+                                    klines: formattedKlines,
+                                    timestamp: Date.now(),
+                                }, null, 2),
+                            },
+                        ],
+                    };
+                }
+                else if (name === "get_symbol_overview") {
+                    const params = GetSymbolOverviewSchema.parse(args || {});
+                    const overview = await getSymbolOverview(params);
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify({
+                                    ...overview,
+                                    timestampISO: new Date(overview.timestamp).toISOString(),
+                                }, null, 2),
+                            },
+                        ],
+                    };
+                }
+                else if (name === "get_order_book") {
+                    const params = GetOrderBookSchema.parse(args || {});
+                    const orderBook = await getOrderBook(params);
+                    const bidTotal = orderBook.bids.reduce((sum, [price, qty]) => sum + parseFloat(price) * parseFloat(qty), 0);
+                    const askTotal = orderBook.asks.reduce((sum, [price, qty]) => sum + parseFloat(price) * parseFloat(qty), 0);
+                    const bidAskRatio = bidTotal / (bidTotal + askTotal);
+                    const bestBid = parseFloat(orderBook.bids[0]?.[0] || "0");
+                    const bestAsk = parseFloat(orderBook.asks[0]?.[0] || "0");
+                    const spread = bestAsk - bestBid;
+                    const spreadPercent = bestBid > 0 ? (spread / bestBid) * 100 : 0;
+                    const formattedBids = orderBook.bids.slice(0, 10).map(([price, qty]) => ({
+                        price,
+                        quantity: qty,
+                        total: (parseFloat(price) * parseFloat(qty)).toFixed(2),
+                    }));
+                    const formattedAsks = orderBook.asks.slice(0, 10).map(([price, qty]) => ({
+                        price,
+                        quantity: qty,
+                        total: (parseFloat(price) * parseFloat(qty)).toFixed(2),
+                    }));
+                    return {
+                        content: [
+                            {
+                                type: "text",
+                                text: JSON.stringify({
+                                    symbol: `${params.symbol.toUpperCase()}${params.quote.toUpperCase()}`,
+                                    lastUpdateId: orderBook.lastUpdateId,
+                                    bestBid: orderBook.bids[0]?.[0] || "0",
+                                    bestAsk: orderBook.asks[0]?.[0] || "0",
+                                    spread: spread.toFixed(8),
+                                    spreadPercent: spreadPercent.toFixed(4),
+                                    bidAskRatio: bidAskRatio.toFixed(4),
+                                    liquidity: {
+                                        bidTotal: bidTotal.toFixed(2),
+                                        askTotal: askTotal.toFixed(2),
+                                        totalLiquidity: (bidTotal + askTotal).toFixed(2),
+                                        bidStrength: bidAskRatio > 0.55 ? "强" : bidAskRatio < 0.45 ? "弱" : "平衡",
+                                    },
+                                    topBids: formattedBids,
+                                    topAsks: formattedAsks,
+                                    totalBids: orderBook.bids.length,
+                                    totalAsks: orderBook.asks.length,
+                                    timestamp: Date.now(),
+                                    timestampISO: new Date().toISOString(),
+                                }, null, 2),
+                            },
+                        ],
+                    };
+                }
+                else {
+                    throw new Error(`Unknown tool: ${name}`);
+                }
+            }
+            else if (method === "initialize") {
+                // 初始化请求
+                return {
+                    protocolVersion: "2024-11-05",
+                    capabilities: {
+                        tools: {},
+                    },
+                    serverInfo: {
+                        name: "crypto-mcp-server",
+                        version: "1.0.0",
+                    },
+                };
+            }
+            else {
+                throw new Error(`Unknown method: ${method}`);
+            }
+        };
+        // 创建 HTTP 服务器，处理 MCP JSON-RPC 请求
         const httpServer = createServer(async (req, res) => {
             // 设置 CORS 头
             res.setHeader("Access-Control-Allow-Origin", "*");
             res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
             res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+            res.setHeader("Content-Type", "application/json");
             if (req.method === "OPTIONS") {
                 res.writeHead(200);
                 res.end();
                 return;
             }
-            if (req.method === "POST" && req.url === "/mcp") {
+            if (req.method === "POST" && (req.url === "/mcp" || req.url === "/")) {
                 let body = "";
                 req.on("data", (chunk) => {
                     body += chunk.toString();
                 });
                 req.on("end", async () => {
+                    let requestId = null;
                     try {
                         const request = JSON.parse(body);
-                        // 这里需要将 HTTP 请求转换为 MCP 请求
-                        // 由于 MCP SDK 主要支持 stdio，我们需要创建一个适配器
-                        // 对于 Smithery，可能需要使用 SSE 或其他协议
-                        res.writeHead(200, { "Content-Type": "application/json" });
-                        res.end(JSON.stringify({
-                            error: "HTTP transport adapter not fully implemented. Please use stdio transport."
-                        }));
+                        requestId = request.id;
+                        // 处理 MCP 请求
+                        const result = await handleRequest(request.method, request.params);
+                        const response = {
+                            jsonrpc: "2.0",
+                            id: requestId,
+                            result,
+                        };
+                        res.writeHead(200);
+                        res.end(JSON.stringify(response));
                     }
                     catch (error) {
-                        res.writeHead(500, { "Content-Type": "application/json" });
-                        res.end(JSON.stringify({ error: String(error) }));
+                        const errorResponse = {
+                            jsonrpc: "2.0",
+                            id: requestId,
+                            error: {
+                                code: -32603,
+                                message: "Internal error",
+                                data: error instanceof Error ? error.message : String(error),
+                            },
+                        };
+                        res.writeHead(500);
+                        res.end(JSON.stringify(errorResponse));
                     }
                 });
             }
             else {
                 res.writeHead(404);
-                res.end("Not Found");
+                res.end(JSON.stringify({ error: "Not Found" }));
             }
         });
-        // 仍然使用 stdio transport，但启动 HTTP 服务器用于健康检查
-        const transport = new StdioServerTransport();
-        await server.connect(transport);
+        // 不连接 stdio transport，直接使用 HTTP
         httpServer.listen(port, () => {
-            console.error(`Crypto MCP Server (HTTP wrapper) 已启动，监听端口 ${port}`);
-            console.error(`健康检查端点: http://localhost:${port}/health`);
-            console.error(`注意: MCP 协议仍使用 stdio，HTTP 仅用于健康检查`);
-        });
-        // 添加健康检查端点
-        httpServer.on("request", (req, res) => {
-            if (req.method === "GET" && req.url === "/health") {
-                res.writeHead(200, { "Content-Type": "application/json" });
-                res.end(JSON.stringify({ status: "ok", service: "crypto-mcp-server" }));
-            }
+            console.error(`Crypto MCP Server (HTTP) 已启动，监听端口 ${port}`);
+            console.error(`MCP 端点: http://localhost:${port}/mcp`);
         });
     }
     else {

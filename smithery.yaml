@@ -3,7 +3,7 @@
 version: 1
 
 startCommand:
-  type: stdio
+  type: http
 
   # MCP 客户端 / Smithery 会根据这个函数生成真正要执行的命令
   commandFunction: |
