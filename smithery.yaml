@@ -5,11 +5,13 @@ version: 1.0.0
 author: William Wang
 homepage: https://github.com/WilliamNing316/crypto-mcp-server
 license: MIT
+
 categories:
   - finance
   - cryptocurrency
   - trading
   - data
+
 tags:
   - crypto
   - binance
@@ -18,8 +20,10 @@ tags:
   - mcp
   - ai-agent
 
+# ✅ 用 node runtime 就好，不要 container
 runtime: node
 
+# ✅ 告诉 Smithery 怎么启动你的 stdio MCP 服务器
 startCommand:
   type: stdio
   command: ["node", "dist/server.js"]
