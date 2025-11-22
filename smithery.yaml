@@ -1,41 +1,24 @@
-name: crypto-mcp-server
-displayName: Crypto MCP Server
-description: AI Agent toolset for cryptocurrency market data query and intelligent analysis based on Model Context Protocol (MCP)
-version: 1.0.0
-author: William Wang
-homepage: https://github.com/WilliamNing316/crypto-mcp-server
-license: MIT
+# Smithery configuration file: https://smithery.ai/docs/build/project-config
 
-categories:
-  - finance
-  - cryptocurrency
-  - trading
-  - data
+version: 1
 
-tags:
-  - crypto
-  - binance
-  - trading
-  - market-data
-  - mcp
-  - ai-agent
-
-# ✅ 用 node runtime 就好，不要 container
-runtime: node
-
-# ✅ 告诉 Smithery 怎么启动你的 stdio MCP 服务器
 startCommand:
   type: stdio
-  command: ["node", "dist/server.js"]
 
-tools:
-  - name: get_price
-    description: Get real-time cryptocurrency price from Binance
-  - name: get_24h_stats
-    description: Get 24-hour statistics including price change, volume, high/low prices
-  - name: get_ohlcv
-    description: Get K-line (candlestick) data for technical analysis
-  - name: get_symbol_overview
-    description: Get comprehensive overview with intelligent trend analysis (MA, RSI indicators)
-  - name: get_order_book
-    description: Get order book depth for liquidity and market depth analysis
+  # MCP 客户端 / Smithery 会根据这个函数生成真正要执行的命令
+  commandFunction: |
+    (config) => ({
+      command: "node",
+      args: ["dist/server.js"],
+      env: {
+        // 如果以后需要 API_KEY、环境配置，在这里从 config 传进去
+      },
+    })
+
+  # 用 JSON Schema 描述可配置项（现在你暂时不需要，就留空对象）
+  configSchema:
+    type: object
+    properties: {}
+
+  # 一个示例配置（当前没用到，就给个空对象）
+  exampleConfig: {}
