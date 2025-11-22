@@ -632,11 +632,13 @@ async function main() {
             throw new McpError(ErrorCode.InternalError, `工具执行失败: ${error instanceof Error ? error.message : String(error)}`);
         }
     });
-    // 根据环境变量选择传输方式
-    const transportType = process.env.MCP_TRANSPORT || "stdio";
+    // 根据环境变量选择传输方式，默认使用 HTTP（用于 Smithery 部署）
+    // 可以通过设置 MCP_TRANSPORT=stdio 来使用 stdio 模式
+    const transportType = process.env.MCP_TRANSPORT || "http";
     if (transportType === "http") {
         // HTTP 传输模式（用于 Smithery 等平台）
         // MCP over HTTP 使用 JSON-RPC 2.0 协议
+        // 默认端口 8081（Smithery 标准端口）
         const port = parseInt(process.env.PORT || "8081", 10);
         const { createServer } = await import("http");
         // 创建内部请求处理函数
@@ -963,11 +965,20 @@ async function main() {
                 });
                 req.on("end", async () => {
                     let requestId = null;
+                    let request = null;
                     try {
-                        const request = JSON.parse(body);
+                        // 解析请求体
+                        if (!body || body.trim() === "") {
+                            throw new Error("Empty request body");
+                        }
+                        request = JSON.parse(body);
                         requestId = request.id;
+                        // 验证请求格式
+                        if (!request.method) {
+                            throw new Error("Missing method in request");
+                        }
                         // 处理 MCP 请求
-                        const result = await handleRequest(request.method, request.params);
+                        const result = await handleRequest(request.method, request.params || {});
                         // 如果是通知（没有 id），不需要返回响应
                         if (requestId === null || requestId === undefined) {
                             res.writeHead(200);
@@ -984,9 +995,15 @@ async function main() {
                         res.end(JSON.stringify(response));
                     }
                     catch (error) {
+                        // 记录错误详情（用于调试）
+                        console.error("[HTTP Error]", error);
+                        console.error("[HTTP Error Request]", request ? JSON.stringify(request, null, 2) : "No request object");
+                        if (error instanceof Error) {
+                            console.error("[HTTP Error Stack]", error.stack);
+                        }
                         const errorResponse = {
                             jsonrpc: "2.0",
-                            id: requestId,
+                            id: requestId !== null && requestId !== undefined ? requestId : null,
                             error: {
                                 code: -32603,
                                 message: "Internal error",
