@@ -3,3 +3,5 @@ node_modules/
 .DS_Store
 .env
 *.tsbuildinfo
+test-http-local.sh
+test-http-simple.js

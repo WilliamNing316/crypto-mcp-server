@@ -1149,6 +1149,10 @@ async function main() {
             version: "1.0.0",
           },
         };
+      } else if (method === "notifications/initialized") {
+        // MCP 协议标准通知：客户端初始化完成
+        // 这是一个通知（没有返回值），只需要返回成功即可
+        return null;
       } else {
         throw new Error(`Unknown method: ${method}`);
       }
@@ -1193,10 +1197,18 @@ async function main() {
             // 处理 MCP 请求
             const result = await handleRequest(request.method, request.params);
             
+            // 如果是通知（没有 id），不需要返回响应
+            if (requestId === null || requestId === undefined) {
+              res.writeHead(200);
+              res.end();
+              return;
+            }
+            
+            // 如果有结果，返回结果；如果没有结果（通知），返回 null
             const response = {
               jsonrpc: "2.0",
               id: requestId,
-              result,
+              result: result !== null && result !== undefined ? result : null,
             };
             
             res.writeHead(200);
