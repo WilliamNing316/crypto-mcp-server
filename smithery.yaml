@@ -11,6 +11,8 @@ startCommand:
       command: "node",
       args: ["dist/server.js"],
       env: {
+        MCP_TRANSPORT: "http",
+        PORT: "8081",
         // 如果以后需要 API_KEY、环境配置，在这里从 config 传进去
       },
     })

@@ -632,10 +632,73 @@ async function main() {
             throw new McpError(ErrorCode.InternalError, `工具执行失败: ${error instanceof Error ? error.message : String(error)}`);
         }
     });
-    // 启动服务器（使用 stdio 传输）
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    console.error("Crypto MCP Server 已启动，等待客户端连接...");
+    // 根据环境变量选择传输方式
+    const transportType = process.env.MCP_TRANSPORT || "stdio";
+    if (transportType === "http") {
+        // HTTP 传输模式（用于 Smithery 等平台）
+        // 创建一个简单的 HTTP 服务器包装 MCP 服务器
+        const port = parseInt(process.env.PORT || "8081", 10);
+        const { createServer } = await import("http");
+        // 创建 HTTP 服务器，将请求转发到 MCP 服务器
+        const httpServer = createServer(async (req, res) => {
+            // 设置 CORS 头
+            res.setHeader("Access-Control-Allow-Origin", "*");
+            res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+            res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+            if (req.method === "OPTIONS") {
+                res.writeHead(200);
+                res.end();
+                return;
+            }
+            if (req.method === "POST" && req.url === "/mcp") {
+                let body = "";
+                req.on("data", (chunk) => {
+                    body += chunk.toString();
+                });
+                req.on("end", async () => {
+                    try {
+                        const request = JSON.parse(body);
+                        // 这里需要将 HTTP 请求转换为 MCP 请求
+                        // 由于 MCP SDK 主要支持 stdio，我们需要创建一个适配器
+                        // 对于 Smithery，可能需要使用 SSE 或其他协议
+                        res.writeHead(200, { "Content-Type": "application/json" });
+                        res.end(JSON.stringify({
+                            error: "HTTP transport adapter not fully implemented. Please use stdio transport."
+                        }));
+                    }
+                    catch (error) {
+                        res.writeHead(500, { "Content-Type": "application/json" });
+                        res.end(JSON.stringify({ error: String(error) }));
+                    }
+                });
+            }
+            else {
+                res.writeHead(404);
+                res.end("Not Found");
+            }
+        });
+        // 仍然使用 stdio transport，但启动 HTTP 服务器用于健康检查
+        const transport = new StdioServerTransport();
+        await server.connect(transport);
+        httpServer.listen(port, () => {
+            console.error(`Crypto MCP Server (HTTP wrapper) 已启动，监听端口 ${port}`);
+            console.error(`健康检查端点: http://localhost:${port}/health`);
+            console.error(`注意: MCP 协议仍使用 stdio，HTTP 仅用于健康检查`);
+        });
+        // 添加健康检查端点
+        httpServer.on("request", (req, res) => {
+            if (req.method === "GET" && req.url === "/health") {
+                res.writeHead(200, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ status: "ok", service: "crypto-mcp-server" }));
+            }
+        });
+    }
+    else {
+        // stdio 传输模式（默认，用于本地开发）
+        const transport = new StdioServerTransport();
+        await server.connect(transport);
+        console.error("Crypto MCP Server (stdio) 已启动，等待客户端连接...");
+    }
 }
 // 运行服务器
 main().catch((error) => {
