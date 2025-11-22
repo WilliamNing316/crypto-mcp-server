@@ -1,0 +1,37 @@
+name: crypto-mcp-server
+displayName: Crypto MCP Server
+description: AI Agent toolset for cryptocurrency market data query and intelligent analysis based on Model Context Protocol (MCP)
+version: 1.0.0
+author: William Wang
+homepage: https://github.com/yourusername/crypto-mcp-server
+license: MIT
+categories:
+  - finance
+  - cryptocurrency
+  - trading
+  - data
+tags:
+  - crypto
+  - binance
+  - trading
+  - market-data
+  - mcp
+  - ai-agent
+runtime: container
+build:
+  dockerfile: Dockerfile
+  dockerBuildPath: .
+startCommand:
+  type: stdio
+tools:
+  - name: get_price
+    description: Get real-time cryptocurrency price from Binance
+  - name: get_24h_stats
+    description: Get 24-hour statistics including price change, volume, high/low prices
+  - name: get_ohlcv
+    description: Get K-line (candlestick) data for technical analysis
+  - name: get_symbol_overview
+    description: Get comprehensive overview with intelligent trend analysis (MA, RSI indicators)
+  - name: get_order_book
+    description: Get order book depth for liquidity and market depth analysis
+

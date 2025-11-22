@@ -1,0 +1,30 @@
+{
+  "name": "crypto-mcp-server",
+  "version": "1.0.0",
+  "description": "Binance 加密货币行情 MCP 服务器",
+  "main": "dist/server.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "tsc --watch",
+    "test": "node test/test-server.js"
+  },
+  "keywords": [
+    "mcp",
+    "binance",
+    "crypto",
+    "trading"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "typescript": "^5.3.3"
+  }
+}
+
