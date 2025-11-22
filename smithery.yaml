@@ -3,7 +3,7 @@ displayName: Crypto MCP Server
 description: AI Agent toolset for cryptocurrency market data query and intelligent analysis based on Model Context Protocol (MCP)
 version: 1.0.0
 author: William Wang
-homepage: https://github.com/yourusername/crypto-mcp-server
+homepage: https://github.com/WilliamNing316/crypto-mcp-server
 license: MIT
 categories:
   - finance
