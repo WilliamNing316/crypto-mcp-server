@@ -1260,9 +1260,9 @@ async function main() {
     });
   } else {
     // stdio 传输模式（默认，用于本地开发）
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
-    
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  
     console.error("Crypto MCP Server (stdio) 已启动，等待客户端连接...");
   }
 }

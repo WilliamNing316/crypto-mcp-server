@@ -8,7 +8,9 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "tsc --watch",
-    "test": "node test/test-server.js"
+    "test": "node test/test-server.js",
+    "agent": "node agent.js",
+    "test-agent": "node test-agent.js"
   },
   "keywords": [
     "mcp",

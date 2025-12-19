@@ -1,0 +1,6 @@
+{
+  "LLM_API_URL": "https://llmapi.paratera.com",
+  "LLM_API_KEY": "",
+  "MCP_SERVER_URL": "http://localhost:8081/mcp",
+  "MODEL": "gpt-3.5-turbo"
+}

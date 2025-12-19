@@ -255,10 +255,10 @@ function handleResponse(response) {
             // 根据数据结构判断工具类型
             if (data.price !== undefined) {
               // get_price 响应
-              console.log('价格信息:');
-              console.log(`  交易对: ${data.symbol}`);
-              console.log(`  价格: ${data.price} ${data.quote}`);
-              console.log(`  时间戳: ${data.timestamp} (${data.timestampISO})`);
+            console.log('价格信息:');
+            console.log(`  交易对: ${data.symbol}`);
+            console.log(`  价格: ${data.price} ${data.quote}`);
+            console.log(`  时间戳: ${data.timestamp} (${data.timestampISO})`);
             } else if (data.priceChange !== undefined) {
               // get_24h_stats 响应
               console.log('24小时统计数据:');

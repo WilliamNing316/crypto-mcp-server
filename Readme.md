@@ -1,7 +1,10 @@
-# Crypto MCP Server
+# Crypto MCP Server & Agent
 
 这是一个使用 TypeScript 编写的加密货币 Model Context Protocol (MCP) 服务器，通过 Binance 公共 API 提供实时行情查询能力。
-你可以将其接入 ChatGPT、Claude Desktop、Strands 或任何支持 MCP 的客户端，让 AI 直接调用加密货币工具。
+
+**现在项目包含两个部分：**
+1. **MCP 服务器**：提供加密货币行情查询工具，可以接入 ChatGPT、Claude Desktop、Strands 或任何支持 MCP 的客户端
+2. **Agent**：一个智能 Agent，通过 LLM API 自动调用 MCP 工具来回答用户问题，无需手动配置 MCP 客户端
 
 ## 🔧 功能概览
 
@@ -135,6 +138,50 @@
 
 ---
 
+## 🤖 Agent 使用指南
+
+### 什么是 Agent？
+
+Agent 是一个智能助手，可以自动理解你的问题，选择合适的工具获取数据，然后生成自然语言回答。**无需手动配置 MCP 客户端**，开箱即用！
+
+### 快速开始
+
+1. **启动 MCP 服务器**（HTTP 模式）：
+```bash
+npm run build
+MCP_TRANSPORT=http PORT=8081 npm start
+```
+
+2. **配置 Agent**（创建并编辑 `config.json`）：
+```bash
+# 复制配置文件示例
+cp config.json.example config.json
+
+# 编辑 config.json，填入你的 API 配置
+# 注意：config.json 已加入 .gitignore，不会被提交到版本控制
+```
+
+3. **运行 Agent**：
+```bash
+npm run agent "BTC 现在多少钱？"
+```
+
+### Agent 功能特点
+
+- 🎯 **智能工具选择**：自动根据问题选择合适的工具
+- 🔄 **多轮对话**：支持多轮工具调用直到获得完整答案
+- 📊 **数据可视化**：将原始数据转换为易读的自然语言
+- 🛠️ **自动错误处理**：工具调用失败时自动重试或使用替代方案
+- 📝 **详细日志**：设置 `DEBUG=1` 查看详细的执行过程
+
+### 更多信息
+
+- 详细配置说明：查看 `config.js` 文件
+- 使用示例：查看 `AGENT_README.md`
+- 快速开始：查看 `QUICKSTART.md`
+
+---
+
 ## 📡 数据源说明
 
 本项目使用 **Binance 公开 REST API**：
@@ -170,13 +217,68 @@ npm install
 npm run build
 ```
 
-### 3. 运行服务器
+### 3. 配置 Agent
+
+Agent 通过 `config.json` 配置文件读取配置：
 
 ```bash
+# 1. 复制配置文件示例
+cp config.json.example config.json
+
+# 2. 编辑 config.json，填入你的配置
+# 编辑 config.json 文件，设置以下参数：
+# - LLM_API_URL: LLM API 地址
+# - LLM_API_KEY: LLM API 密钥
+# - MCP_SERVER_URL: MCP 服务器地址
+# - MODEL: LLM 模型名称
+```
+
+**配置文件说明**（`config.json`）：
+- `LLM_API_URL`: LLM API 地址（默认：`https://llmapi.paratera.com`）
+- `LLM_API_KEY`: LLM API 密钥（**重要：不要提交到版本控制**）
+- `MCP_SERVER_URL`: MCP 服务器地址（默认：`http://localhost:8081/mcp`）
+- `MODEL`: LLM 模型名称（默认：`gpt-3.5-turbo`，根据实际 API 支持的模型调整）
+
+**注意**：
+- `config.json` 文件已加入 `.gitignore`，不会被提交到版本控制
+- 如果 `config.json` 不存在，Agent 会使用默认配置并显示警告
+- 参考 `config.json.example` 了解配置文件格式
+
+### 4. 运行 MCP 服务器
+
+```bash
+# HTTP 模式（用于 Agent）
+MCP_TRANSPORT=http PORT=8081 npm start
+
+# 或 stdio 模式（用于 MCP 客户端）
 npm start
 ```
 
-### 4. 开发模式（热重载）
+### 5. 运行 Agent（推荐）
+
+Agent 是最简单的使用方式，无需配置 MCP 客户端：
+
+```bash
+# 方式 1: 使用 npm 脚本
+npm run agent "BTC 现在多少钱？"
+
+# 方式 2: 直接运行
+node agent.js "ETH 今天涨了多少？"
+
+# 方式 3: 运行测试脚本
+npm run test-agent
+```
+
+**Agent 示例问题**：
+```bash
+node agent.js "BTC 现在多少钱？"
+node agent.js "ETH 今天涨了多少？"
+node agent.js "BTC 今天怎么样？属于上涨还是盘整？"
+node agent.js "BTC 的买卖盘深度怎么样？"
+node agent.js "给我 BTC 最近10小时的K线数据"
+```
+
+### 6. 开发模式（热重载）
 
 ```bash
 npm run dev
@@ -186,11 +288,28 @@ npm run dev
 
 ## 🧠 工作原理
 
+### MCP 服务器模式（传统方式）
+
 1. **MCP 客户端启动该服务器**（通过 stdio 通信）
 2. **用户问模型**："现在 BTC 价格多少？"
 3. **模型判断** → 调用 MCP 工具：`get_price`
 4. **MCP 服务器访问 Binance API** → 返回价格
 5. **模型用结果生成自然语言回答**
+
+### Agent 模式（推荐）
+
+1. **启动 MCP 服务器**（HTTP 模式，监听 8081 端口）
+2. **用户运行 Agent**：`node agent.js "BTC 现在多少钱？"`
+3. **Agent 获取 MCP 工具列表** → 转换为 LLM 工具格式
+4. **Agent 调用 LLM API** → LLM 决定调用哪些工具
+5. **Agent 执行工具调用** → 从 MCP 服务器获取数据
+6. **Agent 将结果返回给 LLM** → LLM 生成自然语言回答
+
+**Agent 的优势**：
+- ✅ 无需配置 MCP 客户端
+- ✅ 开箱即用，直接通过命令行使用
+- ✅ 自动工具发现和调用
+- ✅ 支持多轮对话和工具调用循环
 
 ---
 
@@ -203,12 +322,12 @@ npm run dev
 ```json
 {
   "mcpServers": {
-    "crypto-mcp": {
-      "command": "node",
+  "crypto-mcp": {
+    "command": "node",
       "args": ["/path/to/trade_mcp/dist/server.js"],
-      "transport": "stdio"
-    }
+    "transport": "stdio"
   }
+}
 }
 ```
 
@@ -331,6 +450,16 @@ node test/test-api-direct.js
 
 5. **错误处理**：所有工具都包含完善的错误处理，会返回友好的错误信息。
 
+6. **配置文件安全**：
+   - `config.json` 文件已加入 `.gitignore`，不会被提交到版本控制
+   - 不要将包含真实 API Key 的 `config.json` 文件提交到版本控制
+   - 使用 `config.json.example` 作为模板，复制为 `config.json` 后填入你的配置
+
+7. **Agent 使用**：
+   - 使用 Agent 前需要先启动 MCP 服务器（HTTP 模式）
+   - 确保 LLM API 支持工具调用（function calling）功能
+   - 如果遇到工具调用失败，可以设置 `DEBUG=1` 查看详细日志
+
 ---
 
 ## 📊 技术栈
@@ -343,6 +472,12 @@ node test/test-api-direct.js
 ---
 
 ## 📝 更新日志
+
+### v1.1.0
+- ✅ 新增 Agent 功能，无需配置 MCP 客户端即可使用
+- ✅ 配置文件化，支持环境变量和配置文件两种方式
+- ✅ 改进参数解析，修复 LLM 返回字符串参数的问题
+- ✅ 增强错误处理和调试信息
 
 ### v1.0.0
 - ✅ 实现 5 个核心工具

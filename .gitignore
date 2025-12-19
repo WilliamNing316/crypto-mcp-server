@@ -5,3 +5,10 @@ node_modules/
 *.tsbuildinfo
 test-http-local.sh
 test-http-simple.js
+config.json
+
+# 忽略所有 .md 文件，但保留 Readme.md
+*.md
+!Readme.md
+
+test-agent.js
